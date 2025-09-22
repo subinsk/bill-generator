@@ -67,7 +67,14 @@ export default function ViewBillPage() {
       setBillTitle(data.bill.title);
       
       // Convert bill data to editable items
-      const editableItems: Item[] = data.items.map((item, index) => ({
+      const editableItems: Item[] = data.items.map((item: {
+        id: number;
+        bill_id: number;
+        name: string;
+        rate: number;
+        quantity: number;
+        allows_decimal: boolean;
+      }, index: number) => ({
         id: `item-${index}`,
         name: item.name,
         rate: item.rate,
@@ -440,59 +447,59 @@ export default function ViewBillPage() {
               <BillDisplay billSet={billSet} />
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto border border-gray-400">
-            <table className="w-full border-collapse text-sm">
-              {/* Header */}
-              <thead>
-                <tr>
-                  <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[60px]">
-                    क्र सं
-                  </th>
-                  <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[120px]">
-                    सामग्री
-                  </th>
-                  <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[80px]">
-                    दर रू
-                  </th>
-                  <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[60px]">
-                    मात्रा
-                  </th>
-                  <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[80px]">
-                    कुल राशि
-                  </th>
-                  <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-blue-50 text-center font-semibold">
-                    60%
-                  </th>
-                  <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-green-50 text-center font-semibold">
-                    30%
-                  </th>
-                  <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-yellow-50 text-center font-semibold">
-                    10%
-                  </th>
-                </tr>
-                <tr>
-                  <th className="border border-gray-400 px-2 py-2 bg-blue-25 text-center font-medium">मात्रा</th>
-                  <th className="border border-gray-400 px-2 py-2 bg-blue-25 text-center font-medium">Amount</th>
-                  <th className="border border-gray-400 px-2 py-2 bg-green-25 text-center font-medium">मात्रा</th>
-                  <th className="border border-gray-400 px-2 py-2 bg-green-25 text-center font-medium">Amount</th>
-                  <th className="border border-gray-400 px-2 py-2 bg-yellow-25 text-center font-medium">मात्रा</th>
-                  <th className="border border-gray-400 px-2 py-2 bg-yellow-25 text-center font-medium">Amount</th>
-                </tr>
-              </thead>
+                <div className="overflow-x-auto border border-gray-400">
+                  <table className="w-full border-collapse text-sm">
+                    {/* Header */}
+                    <thead>
+                      <tr>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[60px]">
+                          क्र सं
+                        </th>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[120px]">
+                          सामग्री
+                        </th>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[80px]">
+                          दर रू
+                        </th>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[60px]">
+                          मात्रा
+                        </th>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-3 bg-gray-100 text-center font-semibold min-w-[80px]">
+                          कुल राशि
+                        </th>
+                        <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-blue-50 text-center font-semibold">
+                          60%
+                        </th>
+                        <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-green-50 text-center font-semibold">
+                          30%
+                        </th>
+                        <th colSpan={2} className="border border-gray-400 px-2 py-1 bg-yellow-50 text-center font-semibold">
+                          10%
+                        </th>
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-400 px-2 py-2 bg-blue-25 text-center font-medium">मात्रा</th>
+                        <th className="border border-gray-400 px-2 py-2 bg-blue-25 text-center font-medium">Amount</th>
+                        <th className="border border-gray-400 px-2 py-2 bg-green-25 text-center font-medium">मात्रा</th>
+                        <th className="border border-gray-400 px-2 py-2 bg-green-25 text-center font-medium">Amount</th>
+                        <th className="border border-gray-400 px-2 py-2 bg-yellow-25 text-center font-medium">मात्रा</th>
+                        <th className="border border-gray-400 px-2 py-2 bg-yellow-25 text-center font-medium">Amount</th>
+                      </tr>
+                    </thead>
 
-              {/* Body */}
-              <tbody>
-                {Object.values(itemGroups).map((group, index: number) => {
-                  const { item, distributions } = group;
-                  const dist60 = distributions.find((d) => d.percentage === 60) || { quantity: 0, amount: 0 };
-                  const dist30 = distributions.find((d) => d.percentage === 30) || { quantity: 0, amount: 0 };
-                  const dist10 = distributions.find((d) => d.percentage === 10) || { quantity: 0, amount: 0 };
+                    {/* Body */}
+                    <tbody>
+                      {Object.values(itemGroups).map((group, index: number) => {
+                        const { item, distributions } = group;
+                        const dist60 = distributions.find((d) => d.percentage === 60) || { quantity: 0, amount: 0 };
+                        const dist30 = distributions.find((d) => d.percentage === 30) || { quantity: 0, amount: 0 };
+                        const dist10 = distributions.find((d) => d.percentage === 10) || { quantity: 0, amount: 0 };
 
-                  return (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-400 px-2 py-2 text-center font-medium">
-                        {index + 1}
-                      </td>
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="border border-gray-400 px-2 py-2 text-center font-medium">
+                              {index + 1}
+                            </td>
                       <td className="border border-gray-400 px-3 py-2 font-medium">
                         {item.name}
                       </td>
@@ -526,12 +533,12 @@ export default function ViewBillPage() {
                       <td className="border border-gray-400 px-2 py-2 text-right bg-yellow-25">
                         {formatNumber(dist10.amount, 1)}
                       </td>
-                    </tr>
-                  );
-                })}
+                          </tr>
+                        );
+                      })}
 
-                {/* Total Row */}
-                <tr className="bg-gray-100 font-semibold">
+                      {/* Total Row */}
+                      <tr className="bg-gray-100 font-semibold">
                   <td colSpan={4} className="border border-gray-400 px-3 py-3 text-right">
                     सामग्री की कुल राशि
                   </td>
@@ -557,10 +564,10 @@ export default function ViewBillPage() {
                     {formatNumber(billData.distributions.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0), 1)}
                   </td>
                 </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
         )}
