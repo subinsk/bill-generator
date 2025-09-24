@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { GSTBill } from '@/types';
 import GSTBillDisplay from '@/components/GSTBillDisplay';
 
 export default function GSTBillViewPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [bill, setBill] = useState<GSTBill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -45,6 +47,12 @@ export default function GSTBillViewPage() {
     
     const { exportGSTBillToExcel } = await import('@/lib/gstExcelExport');
     exportGSTBillToExcel(bill);
+  };
+
+  const handleEdit = () => {
+    if (bill) {
+      router.push(`/new-gst-bill/${params.id}`);
+    }
   };
 
   if (isLoading) {
@@ -123,6 +131,7 @@ export default function GSTBillViewPage() {
         <GSTBillDisplay 
           bill={bill} 
           onExportToExcel={handleExportToExcel}
+          onEdit={handleEdit}
           showActions={true}
         />
       </div>

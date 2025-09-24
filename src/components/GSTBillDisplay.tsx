@@ -1,24 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Download, Printer, FileText } from 'lucide-react';
+import { Download, Printer, FileText, Edit } from 'lucide-react';
 import { GSTBill } from '@/types';
 import { exportGSTBillToExcel } from '@/lib/gstExcelExportNew';
-import { exportGSTBillToPDF } from '@/lib/gstPdfExportNew';
-import { exportGSTBillToPDFFallback } from '@/lib/gstPdfExportFallback';
-import { testPdfExportWithImage } from '@/lib/testPdfExport';
+import { exportGSTBillToPDFJSPDF } from '@/lib/gstPdfExportJSPDF';
+import { exportGSTBillToPDFHTML2Canvas } from '@/lib/gstPdfExportHTML2Canvas';
 
 interface GSTBillDisplayProps {
   bill: GSTBill;
   onExportToExcel?: () => void;
+  onEdit?: () => void;
   showActions?: boolean;
 }
 
-export default function GSTBillDisplay({ bill, onExportToExcel, showActions = true }: GSTBillDisplayProps) {
-  const handlePrint = () => {
-    window.print();
-  };
-
+export default function GSTBillDisplay({ bill, onExportToExcel, onEdit, showActions = true }: GSTBillDisplayProps) {
   const handleExportToExcel = () => {
     if (onExportToExcel) {
       onExportToExcel();
@@ -27,24 +23,19 @@ export default function GSTBillDisplay({ bill, onExportToExcel, showActions = tr
     }
   };
 
-  const handleExportToPDF = () => {
-    // Show loading indicator
-    const button = document.querySelector('[data-pdf-export]') as HTMLButtonElement;
-    if (button) {
-      const originalText = button.innerHTML;
-      button.innerHTML = 'Generating PDF...';
-      button.disabled = true;
-      
-      // Use html2canvas to capture the exact UI appearance
-      exportGSTBillToPDFFallback(bill);
-      
-      // Restore button after a delay
-      setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-      }, 3000);
-    } else {
-      exportGSTBillToPDFFallback(bill);
+  const handleExportToPDFJSPDF = () => {
+    try {
+      exportGSTBillToPDFJSPDF(bill);
+    } catch (error) {
+      console.error('JSPDF export error:', error);
+    }
+  };
+
+  const handleExportToPDFHTML2Canvas = () => {
+    try {
+      exportGSTBillToPDFHTML2Canvas(bill);
+    } catch (error) {
+      console.error('HTML2Canvas export error:', error);
     }
   };
 
@@ -55,28 +46,38 @@ export default function GSTBillDisplay({ bill, onExportToExcel, showActions = tr
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-300 print:hidden">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-800">GST इनवॉइस प्रीव्यू</h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  <Edit size={18} />
+                  संपादित करें
+                </button>
+              )}
               <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                <Printer size={18} />
-                प्रिंट करें
-              </button>
-              <button
-                data-pdf-export
-                onClick={handleExportToPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleExportToPDFJSPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                title="PDF Export using jsPDF (Structured Layout)"
               >
                 <FileText size={18} />
-                PDF में एक्सपोर्ट करें
+                PDF (jsPDF)
+              </button>
+              <button
+                onClick={handleExportToPDFHTML2Canvas}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors"
+                title="PDF Export using HTML2Canvas (Exact UI Copy)"
+              >
+                <FileText size={18} />
+                PDF (UI Copy)
               </button>
               <button
                 onClick={handleExportToExcel}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
               >
                 <Download size={18} />
-                Excel में एक्सपोर्ट करें
+                Excel
               </button>
             </div>
           </div>
