@@ -49,14 +49,14 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
     // Total row
     const totalAmount = bills[0].items.reduce((sum, item) => sum + (item.item.quantity * item.item.rate), 0);
     excelData.push([
-      '', '', '', 'सामग्री की कुल राशि',
-      totalAmount,
-      parseFloat(bills[0].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(1)),
-      parseFloat(bills[0].totalAmount.toFixed(1)),
-      parseFloat(bills[1].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(1)),
-      parseFloat(bills[1].totalAmount.toFixed(1)),
-      parseFloat(bills[2].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(1)),
-      parseFloat(bills[2].totalAmount.toFixed(1))
+      '', 'कुल योग', '', '',
+      totalAmount.toFixed(2),
+      parseFloat(bills[0].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)),
+      parseFloat(bills[0].totalAmount.toFixed(2)),
+      parseFloat(bills[1].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)),
+      parseFloat(bills[1].totalAmount.toFixed(2)),
+      parseFloat(bills[2].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)),
+      parseFloat(bills[2].totalAmount.toFixed(2))
     ]);
     
     // Create worksheet
@@ -77,6 +77,65 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
       { wch: 12 }   // 10% Amount
     ];
     
+    // Apply professional styling
+    const borderStyle = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' }, size: 12 },
+      fill: { fgColor: { rgb: '4472C4' } },
+      border: borderStyle,
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    
+    const dataStyle = {
+      border: borderStyle,
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    
+    const totalStyle = {
+      font: { bold: true, color: { rgb: '000000' } },
+      fill: { fgColor: { rgb: 'FFD700' } },
+      border: borderStyle,
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    
+    // Apply styling to percentage header row
+    for (let col = 5; col <= 10; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (!ws[cellAddress]) ws[cellAddress] = { v: '', t: 's' };
+      ws[cellAddress].s = headerStyle;
+    }
+    
+    // Apply styling to column headers row
+    for (let col = 0; col <= 10; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
+      if (!ws[cellAddress]) ws[cellAddress] = { v: '', t: 's' };
+      ws[cellAddress].s = headerStyle;
+    }
+    
+    // Apply styling to data rows
+    for (let row = 2; row < excelData.length - 1; row++) {
+      for (let col = 0; col <= 10; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!ws[cellAddress]) ws[cellAddress] = { v: '', t: 's' };
+        ws[cellAddress].s = dataStyle;
+      }
+    }
+    
+    // Apply styling to total row
+    const totalRowIndex = excelData.length - 1;
+    for (let col = 0; col <= 10; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
+      if (ws[cellAddress]) {
+        ws[cellAddress].s = totalStyle;
+      }
+    }
+    
     // Merge cells for header
     ws['!merges'] = [
       { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } }, // 60%
@@ -96,20 +155,31 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
 
 
   return (
-    <div className="bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 no-print">
-        <h2 className="text-xl font-semibold text-gray-800">वितरित बिल</h2>
-        <div className="flex items-center gap-4">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Modern Header Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100 no-print">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <FileSpreadsheet size={20} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">वितरित बिल</h2>
+              <p className="text-sm text-gray-600">Excel प्रारूप में निर्यात के लिए तैयार</p>
+            </div>
+          </div>
           <button
             onClick={downloadExcel}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105"
           >
             <FileSpreadsheet size={16} />
             Excel डाउनलोड करें
           </button>
         </div>
       </div>
+      
+      {/* Content Section */}
+      <div className="p-6">
 
       {/* Excel-style Bill Table */}
       <div className="print-area">
@@ -246,6 +316,7 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
           </table>
         </div>
       </div>
+      </div> {/* Close content section */}
 
       <style jsx>{`
         @media print {

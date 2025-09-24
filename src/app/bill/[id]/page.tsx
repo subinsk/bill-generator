@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Calculator, FileSpreadsheet, RefreshCw, AlertTriangle, Save, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { ItemForm } from '@/components/ItemForm';
 import { BillDisplay } from '@/components/BillDisplay';
 import { Item, BillSet } from '@/types';
@@ -14,10 +15,12 @@ import * as XLSX from 'xlsx';
 interface ViewBillData {
   bill: {
     id: number;
+    uuid: string;
     title: string;
     total_amount: number;
     created_at: string;
     updated_at: string;
+    is_draft: boolean;
   };
   items: Array<{
     id: number;
@@ -44,11 +47,10 @@ export default function ViewBillPage() {
   
   const [billData, setBillData] = useState<ViewBillData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [items, setItems] = useState<Item[]>([]);
   const [billSet, setBillSet] = useState<BillSet | null>(null);
-  const [billTitle, setBillTitle] = useState<string>('');
+  const [billTitle, setBillTitle] = useState<string>(''); // Initialize with empty string to prevent controlled/uncontrolled switch
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
@@ -63,11 +65,13 @@ export default function ViewBillPage() {
         throw new Error(data.error || 'बिल लोड करने में त्रुटि');
       }
 
-      setBillData(data);
-      setBillTitle(data.bill.title);
+      // The API returns { success: true, bill: { bill, items, distributions } }
+      const billData = data.bill;
+      setBillData(billData);
+      setBillTitle(billData.bill?.title || '');
       
       // Convert bill data to editable items
-      const editableItems: Item[] = data.items.map((item: {
+      const editableItems: Item[] = (billData.items || []).map((item: {
         id: number;
         bill_id: number;
         name: string;
@@ -84,7 +88,7 @@ export default function ViewBillPage() {
       setItems(editableItems);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
+      toast.error(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
     } finally {
       setIsLoading(false);
     }
@@ -96,12 +100,11 @@ export default function ViewBillPage() {
 
   const generateBills = async () => {
     if (items.length === 0) {
-      setError('कम से कम एक वस्तु जोड़ें');
+      toast.error('कम से कम एक वस्तु जोड़ें');
       return;
     }
 
     setIsGenerating(true);
-    setError('');
 
     try {
       const response = await fetch('/api/distribute', {
@@ -130,9 +133,47 @@ export default function ViewBillPage() {
       }, 500);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
+      toast.error(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const saveBill = async () => {
+    if (!billTitle.trim()) {
+      toast.error('बिल का शीर्षक आवश्यक है');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(`/api/bills/${billId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: billTitle,
+          items,
+          billSet
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'बिल सेव करने में त्रुटि');
+      }
+
+      setSuccessMessage('✅ बिल सफलतापूर्वक सेव हो गया!');
+      setIsEditing(false);
+      await fetchBillData(); // Refresh data
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -159,16 +200,18 @@ export default function ViewBillPage() {
     }
   };
 
-  // Auto-generation disabled - user must click "बिल अपडेट करें" button
-  // useEffect(() => {
-  //   if (isEditing && items.length > 0 && billData) {
-  //     const timeoutId = setTimeout(() => {
-  //       generateBills();
-  //     }, 1000); // Auto-save after 1 second of inactivity
-  //     
-  //     return () => clearTimeout(timeoutId);
-  //   }
-  // }, [items, isEditing, billData]);
+  // Auto-save when title changes (debounced)
+  useEffect(() => {
+    if (isEditing && billTitle && billData) {
+      const timeoutId = setTimeout(() => {
+        if (billSet) {
+          autoSaveBill(billTitle, billSet);
+        }
+      }, 2000); // Auto-save after 2 seconds of inactivity
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [billTitle, isEditing, billData, billSet]);
 
   const downloadExcel = () => {
     if (!billData) return;
@@ -182,10 +225,10 @@ export default function ViewBillPage() {
 
     // Group distributions by item
     const itemGroups: { [key: string]: { item: ViewBillData['items'][0]; distributions: ViewBillData['distributions'] } } = {};
-    billData.items.forEach(item => {
+    (billData.items || []).forEach(item => {
       itemGroups[item.name] = {
         item,
-        distributions: billData.distributions.filter(d => d.item_name === item.name)
+        distributions: (billData.distributions || []).filter(d => d.item_name === item.name)
       };
     });
 
@@ -213,13 +256,13 @@ export default function ViewBillPage() {
     });
 
     // Total row
-    const total60 = billData.distributions.filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0);
-    const total30 = billData.distributions.filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0);
-    const total10 = billData.distributions.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0);
+    const total60 = (billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0);
+    const total30 = (billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0);
+    const total10 = (billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0);
 
     excelData.push([
       '', '', '', 'सामग्री की कुल राशि',
-      billData.bill.total_amount,
+      billData.bill?.total_amount || 0,
       '',
       parseFloat(total60.toFixed(1)),
       '',
@@ -272,14 +315,14 @@ export default function ViewBillPage() {
     );
   }
 
-  if (error || !billData) {
+  if (!billData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="mx-auto mb-4 text-red-400" size={48} />
-          <p className="text-red-600 mb-4">{error || 'बिल नहीं मिला'}</p>
+          <p className="text-red-600 mb-4">बिल नहीं मिला</p>
           <Link
-            href="/"
+            href="/distribution-bills"
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
             <ArrowLeft size={16} />
@@ -292,10 +335,10 @@ export default function ViewBillPage() {
 
   // Group distributions by item for display
   const itemGroups: { [key: string]: { item: ViewBillData['items'][0]; distributions: ViewBillData['distributions'] } } = {};
-  billData.items.forEach(item => {
+  (billData.items || []).forEach(item => {
     itemGroups[item.name] = {
       item,
-      distributions: billData.distributions.filter(d => d.item_name === item.name)
+      distributions: (billData.distributions || []).filter(d => d.item_name === item.name)
     };
   });
 
@@ -304,8 +347,8 @@ export default function ViewBillPage() {
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link 
-            href="/"
+          <Link
+            href="/distribution-bills"
             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
@@ -330,15 +373,15 @@ export default function ViewBillPage() {
                 ) : (
                   <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                      {billData.bill.title}
+                      {billData.bill?.title || 'Untitled Bill'}
                     </h1>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <Calculator size={14} />
-                        कुल राशि: ₹{billData.bill.total_amount.toLocaleString('hi-IN')}
+                        कुल राशि: ₹{billData.bill?.total_amount?.toLocaleString('en-IN') || '0'}
                       </span>
                       <span>
-                        बनाया गया: {new Date(billData.bill.created_at).toLocaleDateString('hi-IN')}
+                        बनाया गया: {billData.bill?.created_at ? new Date(billData.bill.created_at).toLocaleDateString('en-IN') : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -367,16 +410,31 @@ export default function ViewBillPage() {
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
                     >
                       रद्द करें
                     </button>
                     <button
-                      onClick={downloadExcel}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                      onClick={saveBill}
+                      disabled={isSaving}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                        isSaving
+                          ? "bg-gray-400 cursor-not-allowed text-white"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      )}
                     >
-                      <FileSpreadsheet size={16} />
-                      Excel डाउनलोड करें
+                      {isSaving ? (
+                        <>
+                          <RefreshCw className="animate-spin" size={16} />
+                          सेव हो रहा है...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          सेव करें
+                        </>
+                      )}
                     </button>
                   </>
                 )}
@@ -394,49 +452,43 @@ export default function ViewBillPage() {
           </div>
         )}
 
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 max-w-4xl mx-auto">
-            <div className="flex items-center gap-2 text-red-700">
-              <AlertTriangle size={20} />
-              <span className="font-medium">त्रुटि: {error}</span>
-            </div>
-          </div>
-        )}
 
         {/* Edit Mode - Item Form */}
         {isEditing && (
           <div className="mb-8 max-w-6xl mx-auto">
-            <ItemForm items={items} onItemsChange={setItems} />
-            
-            {/* Generate Bills Button */}
-            {items.length > 0 && (
-              <div className="text-center mt-6">
-                <button
-                  onClick={generateBills}
-                  disabled={isGenerating}
-                  className={cn(
-                    "px-8 py-3 rounded-lg font-medium text-white transition-all duration-200",
-                    "flex items-center gap-2 mx-auto",
-                    isGenerating
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md"
-                  )}
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="animate-spin" size={20} />
-                      बिल अपडेट हो रहे हैं...
-                    </>
-                  ) : (
-                    <>
-                      <Calculator size={20} />
-                      बिल अपडेट करें
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">वस्तुओं की जानकारी</h3>
+              <ItemForm items={items} onItemsChange={setItems} />
+              
+              {/* Generate Bills Button */}
+              {items.length > 0 && (
+                <div className="border-t border-gray-200 pt-4 mt-6 text-center">
+                  <button
+                    onClick={generateBills}
+                    disabled={isGenerating}
+                    className={cn(
+                      "px-8 py-3 rounded-lg font-medium text-white transition-all duration-200",
+                      "flex items-center gap-2 mx-auto",
+                      isGenerating
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md"
+                    )}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={20} />
+                        बिल अपडेट हो रहे हैं...
+                      </>
+                    ) : (
+                      <>
+                        <Calculator size={20} />
+                        बिल अपडेट करें
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -543,25 +595,25 @@ export default function ViewBillPage() {
                     सामग्री की कुल राशि
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right font-bold">
-                    {formatNumber(billData.bill.total_amount, 2)}
+                    {formatNumber(billData.bill?.total_amount || 0, 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 60).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.quantity, 0), 1)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0), 1)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 30).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.quantity, 0), 1)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0), 1)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.quantity, 0), 1)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                    {formatNumber(billData.distributions.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0), 1)}
                   </td>
                 </tr>
                     </tbody>

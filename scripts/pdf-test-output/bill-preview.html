@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>GST Bill Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+        }
+        .gst-bill-display {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+        }
+        .bill-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .bill-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .company-info {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .bill-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .bill-details-left, .bill-details-right {
+            flex: 1;
+        }
+        .bill-details-right {
+            text-align: right;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .items-table th, .items-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .items-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .items-table .text-left {
+            text-align: left;
+        }
+        .items-table .text-right {
+            text-align: right;
+        }
+        .totals-section {
+            margin-top: 20px;
+        }
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: right;
+        }
+        .totals-table .label {
+            text-align: left;
+            font-weight: bold;
+        }
+        .tax-summary {
+            margin-top: 20px;
+        }
+        .tax-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .tax-summary-table th, .tax-summary-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        .tax-summary-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="gst-bill-display">
+        <div class="bill-header">
+            <div class="bill-title">TAX INVOICE</div>
+            <div class="company-info">
+                <div><strong>ASHAPURA CONSTRUCTIONS</strong></div>
+                <div>HANUMAN SHALA SCHOOL KE SAMNE, AHORE</div>
+                <div>PAN: CBWPM6776L | GSTIN: 08CBWPM6776L</div>
+            </div>
+        </div>
+        
+        <div class="bill-details">
+            <div class="bill-details-left">
+                <div><strong>Invoice No.:</strong> TEST-001</div>
+                <div><strong>Dated:</strong> 2025-09-23</div>
+                <div><strong>Billed to:</strong> Test Customer</div>
+                <div><strong>GSTIN / UIN:</strong> TEST123456789</div>
+            </div>
+            <div class="bill-details-right">
+                <div><strong>Place of Supply:</strong> Rajasthan (08)</div>
+                <div><strong>Reverse Charge:</strong> N</div>
+                <div><strong>Shipped to:</strong> Test Shipping Address</div>
+            </div>
+        </div>
+        
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">S.N</th>
+                    <th style="width: 25%;">Description of Goods</th>
+                    <th style="width: 10%;">HSN/SAC Code</th>
+                    <th style="width: 8%;">Qty. Unit</th>
+                    <th style="width: 8%;">Rate</th>
+                    <th style="width: 8%;">Price</th>
+                    <th style="width: 6%;">CGST Rate</th>
+                    <th style="width: 8%;">CGST Amount</th>
+                    <th style="width: 6%;">SGST Rate</th>
+                    <th style="width: 8%;">SGST Amount</th>
+                    <th style="width: 8%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                    <tr>
+                        <td>1</td>
+                        <td class="text-left">cement</td>
+                        <td>asdf23</td>
+                        <td>1 CB. MTR</td>
+                        <td class="text-right">23.00</td>
+                        <td class="text-right">23.00</td>
+                        <td>4.50%</td>
+                        <td class="text-right">1.03</td>
+                        <td>4.50%</td>
+                        <td class="text-right">1.03</td>
+                        <td class="text-right">25.06</td>
+                    </tr>
+                
+                    <tr>
+                        <td>2</td>
+                        <td class="text-left">bajri</td>
+                        <td>asdfl</td>
+                        <td>34.5 CB. MTR</td>
+                        <td class="text-right">56.22</td>
+                        <td class="text-right">1939.59</td>
+                        <td>9.00%</td>
+                        <td class="text-right">174.56</td>
+                        <td>9.00%</td>
+                        <td class="text-right">174.56</td>
+                        <td class="text-right">2288.71</td>
+                    </tr>
+                
+                <tr style="background-color: #f9f9f9; font-weight: bold;">
+                    <td colspan="3">Total</td>
+                    <td>35.50</td>
+                    <td></td>
+                    <td class="text-right">1962.59</td>
+                    <td></td>
+                    <td class="text-right">175.59</td>
+                    <td></td>
+                    <td class="text-right">175.59</td>
+                    <td class="text-right">2313.77</td>
+                </tr>
+                <tr>
+                    <td colspan="10" class="text-right"><strong>Less : BSR -1.80 % BELOW</strong></td>
+                    <td class="text-right">35.33</td>
+                </tr>
+                <tr>
+                    <td colspan="10" class="text-right"><strong>Grand Total</strong></td>
+                    <td class="text-right"><strong>2278.46</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="tax-summary">
+            <h3>Tax Summary</h3>
+            <table class="tax-summary-table">
+                <thead>
+                    <tr>
+                        <th>Tax Rate</th>
+                        <th>Taxable Amt.</th>
+                        <th>CGST Amt.</th>
+                        <th>SGST Amt.</th>
+                        <th>Total Tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                        <tr>
+                            <td>9.00%</td>
+                            <td class="text-right">23.00</td>
+                            <td class="text-right">1.03</td>
+                            <td class="text-right">1.03</td>
+                            <td class="text-right">2.06</td>
+                        </tr>
+                    
+                        <tr>
+                            <td>18.00%</td>
+                            <td class="text-right">1939.59</td>
+                            <td class="text-right">174.56</td>
+                            <td class="text-right">174.56</td>
+                            <td class="text-right">349.12</td>
+                        </tr>
+                    
+                    <tr style="background-color: #f9f9f9; font-weight: bold;">
+                        <td><strong>Total</strong></td>
+                        <td class="text-right"><strong>1962.59</strong></td>
+                        <td class="text-right"><strong>175.59</strong></td>
+                        <td class="text-right"><strong>175.59</strong></td>
+                        <td class="text-right"><strong>351.18</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <div><strong>Amount in Words:</strong> Two Thousand Two Hundred Seventy Eight and Forty Six Paise Only</div>
+            <div style="margin-top: 20px;"><strong>Bank Details:</strong> RMGB CA AC NO. 8306041866 RMGB0000103 RMGB AHORE</div>
+        </div>
+    </div>
+</body>
+</html>
+  

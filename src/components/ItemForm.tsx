@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Info } from 'lucide-react';
 import { Item } from '@/types';
-import { cn, formatNumber, parseHindiNumber, isValidNumber } from '@/lib/utils';
+import { cn, formatNumber, parseNumber, isValidNumber } from '@/lib/utils';
 import { APP_CONFIG } from '@/lib/config';
 
 interface ItemFormProps {
@@ -46,8 +46,8 @@ export function ItemForm({ items, onItemsChange }: ItemFormProps) {
       return;
     }
 
-    const quantity = parseHindiNumber(customQuantity);
-    const rate = parseHindiNumber(itemRate);
+    const quantity = parseNumber(customQuantity);
+    const rate = parseNumber(itemRate);
     
     if (quantity <= 0 || rate <= 0) {
       alert('मात्रा और दर शून्य से अधिक होनी चाहिए');
@@ -101,7 +101,7 @@ export function ItemForm({ items, onItemsChange }: ItemFormProps) {
       if (item.id === id) {
         return {
           ...item,
-          quantity: newQuantity ? parseHindiNumber(newQuantity) : 0
+          quantity: newQuantity ? parseNumber(newQuantity) : 0
         };
       }
       return item;
@@ -118,7 +118,7 @@ export function ItemForm({ items, onItemsChange }: ItemFormProps) {
       if (item.id === id) {
         return {
           ...item,
-          rate: newRate ? parseHindiNumber(newRate) : 0
+          rate: newRate ? parseNumber(newRate) : 0
         };
       }
       return item;
