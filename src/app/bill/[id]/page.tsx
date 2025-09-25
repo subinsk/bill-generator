@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Calculator, FileSpreadsheet, RefreshCw, AlertTriangle, Save, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -252,18 +252,12 @@ export default function ViewBillPage() {
     excelData.push(['', '', '', '', '', '60%', '', '30%', '', '10%', '']);
     excelData.push(['क्र सं', 'सामग्री', 'दर रू', 'मात्रा', 'कुल राशि', 'मात्रा', 'Amount', 'मात्रा', 'Amount', 'मात्रा', 'Amount']);
 
-    // Group distributions by item
-    const itemGroups: { [key: string]: { item: ViewBillData['items'][0]; distributions: ViewBillData['distributions'] } } = {};
-    (billData.items || []).forEach(item => {
-      itemGroups[item.name] = {
-        item,
-        distributions: (billData.distributions || []).filter(d => d.item_name === item.name)
-      };
-    });
+    // Use the same itemGroups logic as the table display
+    const groups = Object.values(itemGroups);
 
     // Data rows
     let rowIndex = 1;
-    Object.values(itemGroups).forEach((group) => {
+    groups.forEach((group) => {
       const { item, distributions } = group;
       const dist60 = distributions.find((d) => d.percentage === 60) || { quantity: 0, amount: 0 };
       const dist30 = distributions.find((d) => d.percentage === 30) || { quantity: 0, amount: 0 };
@@ -285,9 +279,9 @@ export default function ViewBillPage() {
     });
 
     // Total row
-    const total60 = (billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0);
-    const total30 = (billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0);
-    const total10 = (billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0);
+    const total60 = billData?.distributions?.filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0) || 0;
+    const total30 = billData?.distributions?.filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0) || 0;
+    const total10 = billData?.distributions?.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0) || 0;
 
     excelData.push([
       '', '', '', 'सामग्री की कुल राशि',
@@ -333,6 +327,20 @@ export default function ViewBillPage() {
     XLSX.writeFile(wb, fileName);
   };
 
+  // Group distributions by item for display - recalculate when data changes
+  const itemGroups = useMemo(() => {
+    const groups: { [key: string]: { item: ViewBillData['items'][0]; distributions: ViewBillData['distributions'] } } = {};
+    if (billData?.items && billData?.distributions) {
+      billData.items.forEach(item => {
+        groups[item.name] = {
+          item,
+          distributions: billData.distributions.filter(d => d.item_name === item.name)
+        };
+      });
+    }
+    return groups;
+  }, [billData?.items, billData?.distributions]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -362,14 +370,6 @@ export default function ViewBillPage() {
     );
   }
 
-  // Group distributions by item for display
-  const itemGroups: { [key: string]: { item: ViewBillData['items'][0]; distributions: ViewBillData['distributions'] } } = {};
-  (billData.items || []).forEach(item => {
-    itemGroups[item.name] = {
-      item,
-      distributions: (billData.distributions || []).filter(d => d.item_name === item.name)
-    };
-  });
 
   return (
     <div className="min-h-screen bg-gray-50">
