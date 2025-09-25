@@ -148,6 +148,28 @@ export default function ViewBillPage() {
     setIsSaving(true);
 
     try {
+      // If no billSet exists, generate distributions automatically
+      let billSetToSave = billSet;
+      if (!billSetToSave && items.length > 0) {
+        const response = await fetch('/api/distribute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items,
+            method: APP_CONFIG.DISTRIBUTION_METHOD,
+            targetItem: APP_CONFIG.PREFERRED_ADJUSTMENT_ITEM
+          }),
+        });
+
+        const data = await response.json();
+        if (response.ok && data.billSet) {
+          billSetToSave = data.billSet;
+          setBillSet(billSetToSave);
+        }
+      }
+
       const response = await fetch(`/api/bills/${billId}`, {
         method: 'PUT',
         headers: {
@@ -156,7 +178,7 @@ export default function ViewBillPage() {
         body: JSON.stringify({
           title: billTitle,
           items,
-          billSet
+          billSet: billSetToSave
         }),
       });
 
@@ -246,12 +268,12 @@ export default function ViewBillPage() {
         item.rate,
         item.quantity,
         item.quantity * item.rate,
-        parseFloat(dist60.quantity.toFixed(1)),
-        parseFloat(dist60.amount.toFixed(1)),
-        parseFloat(dist30.quantity.toFixed(1)),
-        parseFloat(dist30.amount.toFixed(1)),
-        parseFloat(dist10.quantity.toFixed(1)),
-        parseFloat(dist10.amount.toFixed(1))
+        parseFloat(dist60.quantity.toFixed(2)),
+        parseFloat(dist60.amount.toFixed(2)),
+        parseFloat(dist30.quantity.toFixed(2)),
+        parseFloat(dist30.amount.toFixed(2)),
+        parseFloat(dist10.quantity.toFixed(2)),
+        parseFloat(dist10.amount.toFixed(2))
       ]);
     });
 
@@ -264,11 +286,11 @@ export default function ViewBillPage() {
       '', '', '', 'सामग्री की कुल राशि',
       billData.bill?.total_amount || 0,
       '',
-      parseFloat(total60.toFixed(1)),
+      parseFloat(total60.toFixed(2)),
       '',
-      parseFloat(total30.toFixed(1)),
+      parseFloat(total30.toFixed(2)),
       '',
-      parseFloat(total10.toFixed(1))
+      parseFloat(total10.toFixed(2))
     ]);
 
     // Create worksheet
@@ -556,7 +578,7 @@ export default function ViewBillPage() {
                         {item.name}
                       </td>
                       <td className="border border-gray-400 px-2 py-2 text-right">
-                        {formatNumber(item.rate, 0)}
+                        {formatNumber(item.rate, 2)}
                       </td>
                       <td className="border border-gray-400 px-2 py-2 text-right">
                         {formatNumber(item.quantity, item.allows_decimal ? 2 : 0)}
@@ -566,24 +588,24 @@ export default function ViewBillPage() {
                       </td>
                       {/* 60% Bill */}
                       <td className="border border-gray-400 px-2 py-2 text-right bg-blue-25">
-                        {formatNumber(dist60.quantity, item.allows_decimal ? 1 : 0)}
+                        {formatNumber(dist60.quantity, item.allows_decimal ? 2 : 0)}
                       </td>
                       <td className="border border-gray-400 px-2 py-2 text-right bg-blue-25">
-                        {formatNumber(dist60.amount, 1)}
+                        {formatNumber(dist60.amount, 2)}
                       </td>
                       {/* 30% Bill */}
                       <td className="border border-gray-400 px-2 py-2 text-right bg-green-25">
-                        {formatNumber(dist30.quantity, item.allows_decimal ? 1 : 0)}
+                        {formatNumber(dist30.quantity, item.allows_decimal ? 2 : 0)}
                       </td>
                       <td className="border border-gray-400 px-2 py-2 text-right bg-green-25">
-                        {formatNumber(dist30.amount, 1)}
+                        {formatNumber(dist30.amount, 2)}
                       </td>
                       {/* 10% Bill */}
                       <td className="border border-gray-400 px-2 py-2 text-right bg-yellow-25">
-                        {formatNumber(dist10.quantity, item.allows_decimal ? 1 : 0)}
+                        {formatNumber(dist10.quantity, item.allows_decimal ? 2 : 0)}
                       </td>
                       <td className="border border-gray-400 px-2 py-2 text-right bg-yellow-25">
-                        {formatNumber(dist10.amount, 1)}
+                        {formatNumber(dist10.amount, 2)}
                       </td>
                           </tr>
                         );
@@ -598,22 +620,22 @@ export default function ViewBillPage() {
                     {formatNumber(billData.bill?.total_amount || 0, 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.quantity, 0), 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0), 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.quantity, 0), 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0), 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.quantity, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.quantity, 0), 2)}
                   </td>
                   <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0), 1)}
+                    {formatNumber((billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0), 2)}
                   </td>
                 </tr>
                     </tbody>

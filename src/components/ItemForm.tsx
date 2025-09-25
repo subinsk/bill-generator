@@ -338,7 +338,7 @@ export function ItemForm({ items, onItemsChange }: ItemFormProps) {
                       <td className="border-r border-gray-200 px-4 py-3">
                         <input
                           type="text"
-                          value={formatNumber(item.rate, 0)}
+                          value={formatNumber(item.rate, 2)}
                           onChange={(e) => updateItemRate(item.id, e.target.value)}
                           className="w-20 px-2 py-1 border border-gray-200 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />

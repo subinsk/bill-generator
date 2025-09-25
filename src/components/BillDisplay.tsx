@@ -37,12 +37,12 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
         originalItem.rate,
         originalItem.quantity,
         originalItem.quantity * originalItem.rate, // कुल राशि
-        parseFloat(item60.quantity.toFixed(1)),
-        parseFloat(item60.amount.toFixed(1)),
-        parseFloat(item30.quantity.toFixed(1)),
-        parseFloat(item30.amount.toFixed(1)),
-        parseFloat(item10.quantity.toFixed(1)),
-        parseFloat(item10.amount.toFixed(1))
+        parseFloat(item60.quantity.toFixed(2)),
+        parseFloat(item60.amount.toFixed(2)),
+        parseFloat(item30.quantity.toFixed(2)),
+        parseFloat(item30.amount.toFixed(2)),
+        parseFloat(item10.quantity.toFixed(2)),
+        parseFloat(item10.amount.toFixed(2))
       ]);
     });
     
@@ -252,7 +252,7 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
                       {originalItem.name}
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-right">
-                      {formatNumber(originalItem.rate, 0)}
+                      {formatNumber(originalItem.rate, 2)}
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-right">
                       {formatNumber(originalItem.quantity, originalItem.allowsDecimal ? 2 : 0)}
@@ -262,24 +262,24 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
                     </td>
                     {/* 60% Bill */}
                     <td className="border border-gray-400 px-2 py-2 text-right bg-blue-25">
-                      {formatNumber(item60.quantity, originalItem.allowsDecimal ? 1 : 0)}
+                      {formatNumber(item60.quantity, originalItem.allowsDecimal ? 2 : 0)}
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-right bg-blue-25">
-                      {formatNumber(item60.amount, 1)}
+                      {formatNumber(item60.amount, 2)}
                     </td>
                     {/* 30% Bill */}
                     <td className="border border-gray-400 px-2 py-2 text-right bg-green-25">
-                      {formatNumber(item30.quantity, originalItem.allowsDecimal ? 1 : 0)}
+                      {formatNumber(item30.quantity, originalItem.allowsDecimal ? 2 : 0)}
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-right bg-green-25">
-                      {formatNumber(item30.amount, 1)}
+                      {formatNumber(item30.amount, 2)}
                     </td>
                     {/* 10% Bill */}
                     <td className="border border-gray-400 px-2 py-2 text-right bg-yellow-25">
-                      {formatNumber(item10.quantity, originalItem.allowsDecimal ? 1 : 0)}
+                      {formatNumber(item10.quantity, originalItem.allowsDecimal ? 2 : 0)}
                     </td>
                     <td className="border border-gray-400 px-2 py-2 text-right bg-yellow-25">
-                      {formatNumber(item10.amount, 1)}
+                      {formatNumber(item10.amount, 2)}
                     </td>
                   </tr>
                 );
@@ -294,22 +294,22 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
                   {formatNumber(bills[0].items.reduce((sum, item) => sum + (item.item.quantity * item.item.rate), 0), 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                  {formatNumber(bills[0].items.reduce((sum, item) => sum + item.quantity, 0), 1)}
+                  {formatNumber(bills[0].items.reduce((sum, item) => sum + item.quantity, 0), 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-blue-50">
-                  {formatNumber(bills[0].totalAmount, 1)}
+                  {formatNumber(bills[0].totalAmount, 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                  {formatNumber(bills[1].items.reduce((sum, item) => sum + item.quantity, 0), 1)}
+                  {formatNumber(bills[1].items.reduce((sum, item) => sum + item.quantity, 0), 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-green-50">
-                  {formatNumber(bills[1].totalAmount, 1)}
+                  {formatNumber(bills[1].totalAmount, 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                  {formatNumber(bills[2].items.reduce((sum, item) => sum + item.quantity, 0), 1)}
+                  {formatNumber(bills[2].items.reduce((sum, item) => sum + item.quantity, 0), 2)}
                 </td>
                 <td className="border border-gray-400 px-2 py-3 text-right bg-yellow-50">
-                  {formatNumber(bills[2].totalAmount, 1)}
+                  {formatNumber(bills[2].totalAmount, 2)}
                 </td>
               </tr>
             </tbody>

@@ -490,6 +490,71 @@ export function updateBillByUUID(uuid: string, title: string, items: Item[], isD
   return true;
 }
 
+export function updateBillWithDistributions(uuid: string, title: string, items: Item[], billSet: any, isDraft?: boolean): boolean {
+  const db = getDatabase();
+  
+  const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+  
+  const updateBill = db.prepare(`
+    UPDATE bills 
+    SET title = ?, 
+        total_amount = ?,
+        is_draft = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE uuid = ?
+  `);
+  
+  const result = updateBill.run(title, totalAmount, isDraft ? 1 : 0, uuid);
+  
+  if (result.changes === 0) return false;
+  
+  // Get bill ID
+  const billQuery = db.prepare('SELECT id FROM bills WHERE uuid = ?');
+  const billRecord = billQuery.get(uuid) as { id: number };
+  
+  if (!billRecord) return false;
+  
+  // Delete existing items and distributions
+  const deleteItems = db.prepare('DELETE FROM bill_items WHERE bill_id = ?');
+  deleteItems.run(billRecord.id);
+  
+  const deleteDistributions = db.prepare('DELETE FROM bill_distributions WHERE bill_id = ?');
+  deleteDistributions.run(billRecord.id);
+  
+  // Insert new items
+  const insertItem = db.prepare(`
+    INSERT INTO bill_items (bill_id, name, rate, quantity, allows_decimal)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  
+  for (const item of items) {
+    insertItem.run(billRecord.id, item.name, item.rate, item.quantity, item.allowsDecimal ? 1 : 0);
+  }
+  
+  // Insert distributions if billSet is provided
+  if (billSet && billSet.bills) {
+    const insertDistribution = db.prepare(`
+      INSERT INTO bill_distributions (bill_id, item_name, percentage, quantity, amount)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    billSet.bills.forEach((bill: any, billIndex: number) => {
+      const percentage = [60, 30, 10][billIndex];
+      bill.items.forEach((billItem: any) => {
+        insertDistribution.run(
+          billRecord.id,
+          billItem.item.name,
+          percentage,
+          billItem.quantity,
+          billItem.amount
+        );
+      });
+    });
+  }
+  
+  return true;
+}
+
 export function updateGSTBillByUUID(uuid: string, gstBill: GSTBill, isDraft?: boolean): boolean {
   const db = getDatabase();
   

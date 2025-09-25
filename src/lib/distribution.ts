@@ -28,6 +28,14 @@ export class BillDistributor {
 
       // Validate and adjust to ensure totals don't exceed percentage limits
       this.validateAndAdjustBillTotals(billSet);
+      
+      // Ensure the sum of distributions equals the total
+      this.adjustDistributionToMatchTotal(billSet);
+      
+      // Final validation
+      if (!this.validateDistributionSum(billSet)) {
+        console.warn('Distribution sum validation failed, but continuing...');
+      }
 
       return { success: true, billSet };
     } catch (error) {
@@ -67,6 +75,14 @@ export class BillDistributor {
 
       // Validate and adjust to ensure totals don't exceed percentage limits
       this.validateAndAdjustBillTotals(billSet);
+      
+      // Ensure the sum of distributions equals the total
+      this.adjustDistributionToMatchTotal(billSet);
+      
+      // Final validation
+      if (!this.validateDistributionSum(billSet)) {
+        console.warn('Distribution sum validation failed, but continuing...');
+      }
 
       return { success: true, billSet };
     } catch (error) {
@@ -125,10 +141,10 @@ export class BillDistributor {
     this.PERCENTAGES.forEach((percentage, index) => {
       const exactQuantity = (item.quantity * percentage) / 100;
       
-      // Round quantity to 1 decimal place for display
-      const displayQuantity = Math.round(exactQuantity * 10) / 10;
+      // Round quantity to 2 decimal places for display
+      const displayQuantity = Math.round(exactQuantity * 100) / 100;
       
-      // Use exact mathematical calculation for amount to ensure accuracy
+      // Use exact mathematical calculation for amount to ensure accuracy with 2 decimal places
       const displayAmount = Math.round((item.quantity * percentage / 100) * item.rate * 100) / 100;
 
       const billItem: BillItem = {
@@ -277,6 +293,44 @@ export class BillDistributor {
       Math.abs(bill30.totalAmount - expectedAmount30) <= tolerance &&
       Math.abs(bill10.totalAmount - expectedAmount10) <= tolerance
     );
+  }
+
+  /**
+   * Validates that the sum of all distributions equals the total amount
+   */
+  static validateDistributionSum(billSet: BillSet): boolean {
+    const [bill60, bill30, bill10] = billSet.bills;
+    const totalAmount = billSet.totalAmount;
+    
+    const sumOfDistributions = bill60.totalAmount + bill30.totalAmount + bill10.totalAmount;
+    
+    // Allow small rounding differences (within 1 paisa)
+    const tolerance = 0.01;
+    
+    return Math.abs(sumOfDistributions - totalAmount) <= tolerance;
+  }
+
+  /**
+   * Adjusts the last bill to ensure the sum equals the total
+   */
+  static adjustDistributionToMatchTotal(billSet: BillSet): void {
+    const [bill60, bill30, bill10] = billSet.bills;
+    const totalAmount = billSet.totalAmount;
+    
+    const currentSum = bill60.totalAmount + bill30.totalAmount + bill10.totalAmount;
+    const difference = totalAmount - currentSum;
+    
+    if (Math.abs(difference) > 0.01) {
+      // Adjust the 10% bill to make the sum equal to total
+      bill10.totalAmount = Math.round((bill10.totalAmount + difference) * 100) / 100;
+      
+      // Recalculate the last item's amount to match the bill total
+      if (bill10.items.length > 0) {
+        const lastItem = bill10.items[bill10.items.length - 1];
+        const otherItemsSum = bill10.items.slice(0, -1).reduce((sum, item) => sum + item.amount, 0);
+        lastItem.amount = Math.round((bill10.totalAmount - otherItemsSum) * 100) / 100;
+      }
+    }
   }
 }
 
