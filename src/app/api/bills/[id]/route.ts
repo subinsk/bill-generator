@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillByUUID, updateBillByUUID, updateBillWithDistributions, deleteBillByUUID } from '@/lib/database';
-import { Item } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -43,8 +42,8 @@ export async function PUT(
 
     // Use updateBillWithDistributions if billSet is provided, otherwise use regular update
     const updated = billSet 
-      ? updateBillWithDistributions(id, title, items, billSet, isDraft)
-      : updateBillByUUID(id, title, items, isDraft);
+      ? await updateBillWithDistributions(id, title, items, billSet, isDraft)
+      : await updateBillByUUID(id, title, items, isDraft);
     
     if (!updated) {
       return NextResponse.json(

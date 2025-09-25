@@ -157,7 +157,7 @@ export default function GSTItemForm({ items, onItemsChange }: GSTItemFormProps) 
     onItemsChange(items.filter(item => item.id !== id));
   };
 
-  const updateExistingItem = (id: string, field: keyof GSTItem, value: any) => {
+  const updateExistingItem = (id: string, field: keyof GSTItem, value: string | number) => {
     const updatedItems = items.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };

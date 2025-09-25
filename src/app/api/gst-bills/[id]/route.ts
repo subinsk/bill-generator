@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGSTBillByUUID, updateGSTBillByUUID, deleteGSTBillByUUID } from '@/lib/database';
-import { GSTBill } from '@/types';
 
 export async function GET(
   request: NextRequest,

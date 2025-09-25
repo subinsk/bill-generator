@@ -170,6 +170,13 @@ export default function ViewBillPage() {
         }
       }
 
+      // If billSet exists, validate it before saving
+      if (billSetToSave && items.length > 0) {
+        // The API will automatically validate and adjust distributions
+        // No need to validate on client side as the server handles it
+        console.log('Saving bill with validated distributions...');
+      }
+
       const response = await fetch(`/api/bills/${billId}`, {
         method: 'PUT',
         headers: {

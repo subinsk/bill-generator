@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { Item, BillSet, GSTBill } from '@/types';
+import { Item, BillSet, GSTBill, Bill, BillItem } from '@/types';
 
 const dbPath = process.env.NODE_ENV === 'production' 
   ? path.join('/tmp', 'bills.db')
@@ -450,7 +450,7 @@ export function getGSTBillByUUID(uuid: string): GSTBill | null {
   }
 }
 
-export function updateBillByUUID(uuid: string, title: string, items: Item[], isDraft?: boolean): boolean {
+export async function updateBillByUUID(uuid: string, title: string, items: Item[], isDraft?: boolean): Promise<boolean> {
   const db = getDatabase();
   
   const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
@@ -474,10 +474,14 @@ export function updateBillByUUID(uuid: string, title: string, items: Item[], isD
   
   if (!bill) return false;
   
-  // Delete existing items and insert new ones
+  // Delete existing items and distributions
   const deleteItems = db.prepare('DELETE FROM bill_items WHERE bill_id = ?');
   deleteItems.run(bill.id);
   
+  const deleteDistributions = db.prepare('DELETE FROM bill_distributions WHERE bill_id = ?');
+  deleteDistributions.run(bill.id);
+  
+  // Insert new items
   const insertItem = db.prepare(`
     INSERT INTO bill_items (bill_id, name, rate, quantity, allows_decimal)
     VALUES (?, ?, ?, ?, ?)
@@ -487,10 +491,41 @@ export function updateBillByUUID(uuid: string, title: string, items: Item[], isD
     insertItem.run(bill.id, item.name, item.rate, item.quantity, item.allowsDecimal ? 1 : 0);
   }
   
+  // Auto-generate distributions for updated bill
+  try {
+    const { BillDistributor } = await import('./distribution');
+    const distributionResult = BillDistributor.distributeItems(items);
+    
+    if (distributionResult.success && distributionResult.billSet) {
+      const insertDistribution = db.prepare(`
+        INSERT INTO bill_distributions (bill_id, item_name, percentage, quantity, amount)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      distributionResult.billSet.bills.forEach((distBill: Bill, billIndex: number) => {
+        const percentage = [60, 30, 10][billIndex];
+        distBill.items.forEach((billItem: BillItem) => {
+          insertDistribution.run(
+            bill.id,
+            billItem.item.name,
+            percentage,
+            billItem.quantity,
+            billItem.amount
+          );
+        });
+      });
+      
+      console.log(`Auto-generated distributions for updated bill ${uuid}`);
+    }
+  } catch (error) {
+    console.error('Error auto-generating distributions for updated bill:', error);
+    // Don't fail the update if distribution generation fails
+  }
+  
   return true;
 }
 
-export function updateBillWithDistributions(uuid: string, title: string, items: Item[], billSet: any, isDraft?: boolean): boolean {
+export async function updateBillWithDistributions(uuid: string, title: string, items: Item[], billSet: BillSet, isDraft?: boolean): Promise<boolean> {
   const db = getDatabase();
   
   const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
@@ -533,14 +568,38 @@ export function updateBillWithDistributions(uuid: string, title: string, items: 
   
   // Insert distributions if billSet is provided
   if (billSet && billSet.bills) {
+    // Quick validation check - only adjust if distributions are incorrect
+    try {
+      const { BillDistributor } = await import('./distribution');
+      
+      // Quick check: validate the provided distributions
+      const accuracyValidation = BillDistributor.validateBillSetAccuracy(billSet);
+      if (!accuracyValidation.isValid) {
+        console.log('Distributions have mathematical errors, auto-adjusting...');
+        BillDistributor.autoAdjustDistribution(billSet);
+        
+        // Final check - if still not valid, use fallback
+        const finalValidation = BillDistributor.validateBillSetAccuracy(billSet);
+        if (!finalValidation.isValid) {
+          console.log('Auto-adjustment failed, using fallback distribution method...');
+          BillDistributor.applyFallbackDistribution(billSet);
+        }
+      } else {
+        console.log('Distributions are mathematically accurate, no adjustment needed');
+      }
+    } catch (error) {
+      console.error('Error validating distributions:', error);
+      // Continue with original billSet if validation fails
+    }
+    
     const insertDistribution = db.prepare(`
       INSERT INTO bill_distributions (bill_id, item_name, percentage, quantity, amount)
       VALUES (?, ?, ?, ?, ?)
     `);
     
-    billSet.bills.forEach((bill: any, billIndex: number) => {
+    billSet.bills.forEach((bill: Bill, billIndex: number) => {
       const percentage = [60, 30, 10][billIndex];
-      bill.items.forEach((billItem: any) => {
+      bill.items.forEach((billItem: BillItem) => {
         insertDistribution.run(
           billRecord.id,
           billItem.item.name,

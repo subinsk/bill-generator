@@ -278,7 +278,7 @@ export default function GSTBillDisplay({ bill, onExportToExcel, onEdit, showActi
           </div>
           <div className="text-right">
             <div className="mt-16">
-              <div className="font-medium text-sm mb-1">Receiver's Signature</div>
+              <div className="font-medium text-sm mb-1">Receiver&apos;s Signature</div>
               <div className="mt-8 pt-8 border-t border-gray-400">
                 <div className="font-medium text-sm">for {bill.billDetails.companyName}</div>
                 <div className="font-medium text-sm">Authorised Signatory</div>

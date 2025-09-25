@@ -1,4 +1,4 @@
-import { GSTItem, GSTBill, GSTTaxSummary } from '@/types';
+import { GSTItem, GSTTaxSummary } from '@/types';
 
 // Calculate individual item amounts
 export function calculateItemAmounts(

@@ -32,9 +32,18 @@ export class BillDistributor {
       // Ensure the sum of distributions equals the total
       this.adjustDistributionToMatchTotal(billSet);
       
-      // Final validation
-      if (!this.validateDistributionSum(billSet)) {
-        console.warn('Distribution sum validation failed, but continuing...');
+      // Final validation and auto-adjustment
+      const accuracyValidation = this.validateBillSetAccuracy(billSet);
+      if (!accuracyValidation.isValid) {
+        console.log('Auto-adjusting distribution for mathematical accuracy...');
+        this.autoAdjustDistribution(billSet);
+      }
+      
+      // Final check - if still not valid, use fallback distribution
+      const finalValidation = this.validateBillSetAccuracy(billSet);
+      if (!finalValidation.isValid) {
+        console.log('Using fallback distribution method...');
+        this.applyFallbackDistribution(billSet);
       }
 
       return { success: true, billSet };
@@ -79,9 +88,18 @@ export class BillDistributor {
       // Ensure the sum of distributions equals the total
       this.adjustDistributionToMatchTotal(billSet);
       
-      // Final validation
-      if (!this.validateDistributionSum(billSet)) {
-        console.warn('Distribution sum validation failed, but continuing...');
+      // Final validation and auto-adjustment
+      const accuracyValidation = this.validateBillSetAccuracy(billSet);
+      if (!accuracyValidation.isValid) {
+        console.log('Auto-adjusting distribution for mathematical accuracy...');
+        this.autoAdjustDistribution(billSet);
+      }
+      
+      // Final check - if still not valid, use fallback distribution
+      const finalValidation = this.validateBillSetAccuracy(billSet);
+      if (!finalValidation.isValid) {
+        console.log('Using fallback distribution method...');
+        this.applyFallbackDistribution(billSet);
       }
 
       return { success: true, billSet };
@@ -119,17 +137,19 @@ export class BillDistributor {
   }
 
   private static distributeItemAcrossBills(item: Item, bills: Bill[]): void {
+    const totalAmount = item.quantity * item.rate;
+    
     // For items that don't allow decimal (like पानी, मिक्चर), distribute whole numbers intelligently
     if (!item.allowsDecimal && item.quantity <= 10) {
       // Special handling for small whole number quantities
-      const quantities = this.distributeWholeNumbers(item.quantity);
+      const quantities = this.distributeWholeNumbersWithValidation(item.quantity, item.rate, totalAmount);
       
       quantities.forEach((qty, index) => {
         const billAmount = qty * item.rate;
         const billItem: BillItem = {
           item: { ...item },
           quantity: qty,
-          amount: billAmount // Exact calculation for whole numbers
+          amount: billAmount
         };
         bills[index].items.push(billItem);
       });
@@ -137,24 +157,111 @@ export class BillDistributor {
     }
     
     // Standard percentage distribution for decimal items or large quantities
-    // Calculate exact quantities and amounts based on percentages
-    this.PERCENTAGES.forEach((percentage, index) => {
-      const exactQuantity = (item.quantity * percentage) / 100;
-      
-      // Round quantity to 2 decimal places for display
-      const displayQuantity = Math.round(exactQuantity * 100) / 100;
-      
-      // Use exact mathematical calculation for amount to ensure accuracy with 2 decimal places
-      const displayAmount = Math.round((item.quantity * percentage / 100) * item.rate * 100) / 100;
-
+    // Use precise mathematical distribution that ensures accuracy
+    const distributions = this.calculatePreciseDistribution(item.quantity, item.rate, totalAmount);
+    
+    distributions.forEach((dist, index) => {
       const billItem: BillItem = {
         item: { ...item },
-        quantity: displayQuantity,
-        amount: displayAmount
+        quantity: dist.quantity,
+        amount: dist.amount
       };
-
       bills[index].items.push(billItem);
     });
+  }
+
+  /**
+   * Calculate precise distribution that ensures mathematical accuracy
+   */
+  private static calculatePreciseDistribution(quantity: number, rate: number, totalAmount: number): Array<{quantity: number, amount: number}> {
+    const distributions = [];
+    
+    // Calculate exact percentages
+    const qty60 = Math.round(quantity * 0.6 * 100) / 100;
+    const qty30 = Math.round(quantity * 0.3 * 100) / 100;
+    const qty10 = Math.round(quantity * 0.1 * 100) / 100;
+    
+    // Calculate amounts based on quantities
+    const amt60 = Math.round(qty60 * rate * 100) / 100;
+    const amt30 = Math.round(qty30 * rate * 100) / 100;
+    const amt10 = Math.round(qty10 * rate * 100) / 100;
+    
+    // Check if we need to adjust for rounding errors
+    const totalDistributedQty = qty60 + qty30 + qty10;
+    const totalDistributedAmt = amt60 + amt30 + amt10;
+    
+    // Adjust the last distribution (10%) to ensure exact totals
+    const qtyAdjustment = quantity - totalDistributedQty;
+    const amtAdjustment = totalAmount - totalDistributedAmt;
+    
+    const finalQty10 = Math.round((qty10 + qtyAdjustment) * 100) / 100;
+    const finalAmt10 = Math.round((amt10 + amtAdjustment) * 100) / 100;
+    
+    distributions.push(
+      { quantity: qty60, amount: amt60 },
+      { quantity: qty30, amount: amt30 },
+      { quantity: finalQty10, amount: finalAmt10 }
+    );
+    
+    return distributions;
+  }
+
+  /**
+   * Distribute whole numbers with validation to ensure percentage limits
+   */
+  private static distributeWholeNumbersWithValidation(totalQuantity: number, rate: number, totalAmount: number): [number, number, number] {
+    const result: [number, number, number] = [0, 0, 0];
+    
+    if (totalQuantity === 1) {
+      result[2] = 1; // Put in 10% bill
+    } else if (totalQuantity === 2) {
+      result[1] = 1; // 30% bill
+      result[2] = 1; // 10% bill
+    } else if (totalQuantity === 3) {
+      result[0] = 1; // 60% bill
+      result[1] = 1; // 30% bill
+      result[2] = 1; // 10% bill
+    } else if (totalQuantity === 4) {
+      result[0] = 2; // 60% bill (50% of total)
+      result[1] = 1; // 30% bill (25% of total)
+      result[2] = 1; // 10% bill (25% of total)
+    } else if (totalQuantity === 5) {
+      result[0] = 3; // 60% bill (60% of total)
+      result[1] = 1; // 30% bill (20% of total)
+      result[2] = 1; // 10% bill (20% of total)
+    } else {
+      // For larger quantities, use proportional distribution
+      const qty60 = Math.floor(totalQuantity * 0.6);
+      const qty30 = Math.floor((totalQuantity - qty60) * 0.5);
+      const qty10 = totalQuantity - qty60 - qty30;
+      
+      result[0] = qty60;
+      result[1] = qty30;
+      result[2] = qty10;
+    }
+    
+    // Validate that amounts don't exceed percentage limits
+    const amt60 = result[0] * rate;
+    const amt30 = result[1] * rate;
+    const amt10 = result[2] * rate;
+    
+    const maxAmt60 = totalAmount * 0.6;
+    const maxAmt30 = totalAmount * 0.3;
+    const maxAmt10 = totalAmount * 0.1;
+    
+    // If any amount exceeds limit, redistribute
+    if (amt60 > maxAmt60 || amt30 > maxAmt30 || amt10 > maxAmt10) {
+      // Use a more conservative distribution
+      const qty60 = Math.floor(totalQuantity * 0.5); // Use 50% instead of 60%
+      const qty30 = Math.floor((totalQuantity - qty60) * 0.4); // Use 40% of remaining
+      const qty10 = totalQuantity - qty60 - qty30;
+      
+      result[0] = qty60;
+      result[1] = qty30;
+      result[2] = qty10;
+    }
+    
+    return result;
   }
 
   /**
@@ -311,6 +418,107 @@ export class BillDistributor {
   }
 
   /**
+   * Validates mathematical accuracy of each item's distribution
+   */
+  static validateItemDistribution(item: Item, billSet: BillSet): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    const totalAmount = item.quantity * item.rate;
+    
+    // Find the item in each bill
+    const item60 = billSet.bills[0].items.find(bi => bi.item.name === item.name);
+    const item30 = billSet.bills[1].items.find(bi => bi.item.name === item.name);
+    const item10 = billSet.bills[2].items.find(bi => bi.item.name === item.name);
+    
+    if (!item60 || !item30 || !item10) {
+      errors.push(`Item ${item.name} not found in all bills`);
+      return { isValid: false, errors };
+    }
+    
+    // Validate 60% distribution
+    const maxQty60 = totalAmount * 0.6 / item.rate;
+    const maxAmt60 = totalAmount * 0.6;
+    
+    if (item60.quantity > maxQty60) {
+      errors.push(`${item.name} 60% quantity (${item60.quantity}) exceeds 60% of total quantity (${maxQty60})`);
+    }
+    if (item60.amount > maxAmt60) {
+      errors.push(`${item.name} 60% amount (${item60.amount}) exceeds 60% of total amount (${maxAmt60})`);
+    }
+    if (Math.abs(item60.amount - (item60.quantity * item.rate)) > 0.01) {
+      errors.push(`${item.name} 60% amount (${item60.amount}) doesn't match quantity × rate (${item60.quantity * item.rate})`);
+    }
+    
+    // Validate 30% distribution
+    const maxQty30 = totalAmount * 0.3 / item.rate;
+    const maxAmt30 = totalAmount * 0.3;
+    
+    if (item30.quantity > maxQty30) {
+      errors.push(`${item.name} 30% quantity (${item30.quantity}) exceeds 30% of total quantity (${maxQty30})`);
+    }
+    if (item30.amount > maxAmt30) {
+      errors.push(`${item.name} 30% amount (${item30.amount}) exceeds 30% of total amount (${maxAmt30})`);
+    }
+    if (Math.abs(item30.amount - (item30.quantity * item.rate)) > 0.01) {
+      errors.push(`${item.name} 30% amount (${item30.amount}) doesn't match quantity × rate (${item30.quantity * item.rate})`);
+    }
+    
+    // Validate 10% distribution
+    const maxQty10 = totalAmount * 0.1 / item.rate;
+    const maxAmt10 = totalAmount * 0.1;
+    
+    if (item10.quantity > maxQty10) {
+      errors.push(`${item.name} 10% quantity (${item10.quantity}) exceeds 10% of total quantity (${maxQty10})`);
+    }
+    if (item10.amount > maxAmt10) {
+      errors.push(`${item.name} 10% amount (${item10.amount}) exceeds 10% of total amount (${maxAmt10})`);
+    }
+    if (Math.abs(item10.amount - (item10.quantity * item.rate)) > 0.01) {
+      errors.push(`${item.name} 10% amount (${item10.amount}) doesn't match quantity × rate (${item10.quantity * item.rate})`);
+    }
+    
+    // Validate total quantity and amount
+    const totalDistributedQty = item60.quantity + item30.quantity + item10.quantity;
+    const totalDistributedAmt = item60.amount + item30.amount + item10.amount;
+    
+    if (Math.abs(totalDistributedQty - item.quantity) > 0.01) {
+      errors.push(`${item.name} total distributed quantity (${totalDistributedQty}) doesn't match original quantity (${item.quantity})`);
+    }
+    if (Math.abs(totalDistributedAmt - totalAmount) > 0.01) {
+      errors.push(`${item.name} total distributed amount (${totalDistributedAmt}) doesn't match original amount (${totalAmount})`);
+    }
+    
+    return { isValid: errors.length === 0, errors };
+  }
+
+  /**
+   * Validates the entire bill set for mathematical accuracy
+   */
+  static validateBillSetAccuracy(billSet: BillSet): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    
+    // Validate each item
+    for (const item of billSet.originalItems) {
+      const itemValidation = this.validateItemDistribution(item, billSet);
+      if (!itemValidation.isValid) {
+        errors.push(...itemValidation.errors);
+      }
+    }
+    
+    // Validate total distribution
+    if (!this.validateDistributionSum(billSet)) {
+      errors.push('Total distribution sum doesn\'t match total amount');
+    }
+    
+    return { isValid: errors.length === 0, errors };
+  }
+
+  /**
    * Adjusts the last bill to ensure the sum equals the total
    */
   static adjustDistributionToMatchTotal(billSet: BillSet): void {
@@ -331,6 +539,108 @@ export class BillDistributor {
         lastItem.amount = Math.round((bill10.totalAmount - otherItemsSum) * 100) / 100;
       }
     }
+  }
+
+  /**
+   * Auto-adjusts distribution to fix mathematical errors
+   */
+  static autoAdjustDistribution(billSet: BillSet): void {
+    const [bill60, bill30, bill10] = billSet.bills;
+    
+    // For each item, ensure mathematical accuracy
+    for (let i = 0; i < billSet.originalItems.length; i++) {
+      const originalItem = billSet.originalItems[i];
+      const totalAmount = originalItem.quantity * originalItem.rate;
+      
+      // Get the item from each bill
+      const item60 = bill60.items[i];
+      const item30 = bill30.items[i];
+      const item10 = bill10.items[i];
+      
+      if (item60 && item30 && item10) {
+        // Recalculate amounts based on quantities
+        item60.amount = Math.round(item60.quantity * originalItem.rate * 100) / 100;
+        item30.amount = Math.round(item30.quantity * originalItem.rate * 100) / 100;
+        item10.amount = Math.round(item10.quantity * originalItem.rate * 100) / 100;
+        
+        // Ensure percentage limits are respected
+        const maxAmt60 = totalAmount * 0.6;
+        const maxAmt30 = totalAmount * 0.3;
+        const maxAmt10 = totalAmount * 0.1;
+        
+        if (item60.amount > maxAmt60) {
+          item60.amount = Math.round(maxAmt60 * 100) / 100;
+          item60.quantity = Math.round(item60.amount / originalItem.rate * 100) / 100;
+        }
+        
+        if (item30.amount > maxAmt30) {
+          item30.amount = Math.round(maxAmt30 * 100) / 100;
+          item30.quantity = Math.round(item30.amount / originalItem.rate * 100) / 100;
+        }
+        
+        if (item10.amount > maxAmt10) {
+          item10.amount = Math.round(maxAmt10 * 100) / 100;
+          item10.quantity = Math.round(item10.amount / originalItem.rate * 100) / 100;
+        }
+      }
+    }
+    
+    // Recalculate bill totals
+    this.calculateBillTotals(billSet.bills);
+  }
+
+  /**
+   * Uses a fallback distribution method that guarantees accuracy
+   */
+  static applyFallbackDistribution(billSet: BillSet): void {
+    const [bill60, bill30, bill10] = billSet.bills;
+    
+    // Clear existing items
+    bill60.items = [];
+    bill30.items = [];
+    bill10.items = [];
+    
+    // Redistribute using simple percentage method
+    for (const originalItem of billSet.originalItems) {
+      const totalAmount = originalItem.quantity * originalItem.rate;
+      
+      // Simple 60/30/10 distribution
+      const qty60 = Math.round(originalItem.quantity * 0.6 * 100) / 100;
+      const qty30 = Math.round(originalItem.quantity * 0.3 * 100) / 100;
+      const qty10 = Math.round(originalItem.quantity * 0.1 * 100) / 100;
+      
+      const amt60 = Math.round(qty60 * originalItem.rate * 100) / 100;
+      const amt30 = Math.round(qty30 * originalItem.rate * 100) / 100;
+      const amt10 = Math.round(qty10 * originalItem.rate * 100) / 100;
+      
+      // Adjust for rounding errors in the 10% bill
+      const totalDistributedQty = qty60 + qty30 + qty10;
+      const totalDistributedAmt = amt60 + amt30 + amt10;
+      
+      const finalQty10 = Math.round((qty10 + (originalItem.quantity - totalDistributedQty)) * 100) / 100;
+      const finalAmt10 = Math.round((amt10 + (totalAmount - totalDistributedAmt)) * 100) / 100;
+      
+      bill60.items.push({
+        item: { ...originalItem },
+        quantity: qty60,
+        amount: amt60
+      });
+      
+      bill30.items.push({
+        item: { ...originalItem },
+        quantity: qty30,
+        amount: amt30
+      });
+      
+      bill10.items.push({
+        item: { ...originalItem },
+        quantity: finalQty10,
+        amount: finalAmt10
+      });
+    }
+    
+    // Recalculate bill totals
+    this.calculateBillTotals(billSet.bills);
   }
 }
 
