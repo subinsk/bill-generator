@@ -37,20 +37,20 @@ export function BillDisplay({ billSet }: BillDisplayProps) {
         originalItem.rate,
         originalItem.quantity,
         originalItem.quantity * originalItem.rate, // कुल राशि
-        parseFloat(item60.quantity.toFixed(2)),
+        parseFloat(item60.quantity.toFixed(originalItem.allowsDecimal ? 2 : 0)),
         parseFloat(item60.amount.toFixed(2)),
-        parseFloat(item30.quantity.toFixed(2)),
+        parseFloat(item30.quantity.toFixed(originalItem.allowsDecimal ? 2 : 0)),
         parseFloat(item30.amount.toFixed(2)),
-        parseFloat(item10.quantity.toFixed(2)),
+        parseFloat(item10.quantity.toFixed(originalItem.allowsDecimal ? 2 : 0)),
         parseFloat(item10.amount.toFixed(2))
       ]);
     });
     
-    // Total row
+    // Total row - Use the same calculation as the UI
     const totalAmount = bills[0].items.reduce((sum, item) => sum + (item.item.quantity * item.item.rate), 0);
     excelData.push([
-      '', 'कुल योग', '', '',
-      totalAmount.toFixed(2),
+      '', '', '', 'सामग्री की कुल राशि',
+      parseFloat(totalAmount.toFixed(2)),
       parseFloat(bills[0].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)),
       parseFloat(bills[0].totalAmount.toFixed(2)),
       parseFloat(bills[1].items.reduce((sum, item) => sum + item.quantity, 0).toFixed(2)),

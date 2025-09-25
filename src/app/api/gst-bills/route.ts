@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveGSTBill, getAllGSTBills } from '@/lib/database';
+import { saveGSTBill, getAllGSTBills } from '@/lib/database-prisma';
 import { GSTBill } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const billId = saveGSTBill(gstBill);
+    const billId = await saveGSTBill(gstBill);
     
     return NextResponse.json(
       { 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const bills = getAllGSTBills();
+    const bills = await getAllGSTBills();
     
     return NextResponse.json(
       { 

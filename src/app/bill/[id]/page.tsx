@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Calculator, FileSpreadsheet, RefreshCw, AlertTriangle, Save, Edit } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ItemForm } from '@/components/ItemForm';
 import { BillDisplay } from '@/components/BillDisplay';
@@ -42,7 +42,7 @@ interface ViewBillData {
 
 export default function ViewBillPage() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Removed unused variable
   const billId = params.id as string;
   
   const [billData, setBillData] = useState<ViewBillData | null>(null);
@@ -98,7 +98,31 @@ export default function ViewBillPage() {
     fetchBillData();
   }, [fetchBillData]);
 
-  const generateBills = async () => {
+  const autoSaveBill = useCallback(async (title: string, generatedBillSet: BillSet) => {
+    try {
+      console.log('Auto-save - items being sent:', items);
+      const response = await fetch(`/api/bills/${billId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          items,
+          billSet: generatedBillSet
+        }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage('✅ बिल अपडेट हो गया!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    }
+  }, [items, billId]);
+
+  const generateBills = useCallback(async () => {
     if (items.length === 0) {
       toast.error('कम से कम एक वस्तु जोड़ें');
       return;
@@ -137,7 +161,7 @@ export default function ViewBillPage() {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [items, billTitle, autoSaveBill]);
 
   const saveBill = async () => {
     if (!billTitle.trim()) {
@@ -177,6 +201,7 @@ export default function ViewBillPage() {
         console.log('Saving bill with validated distributions...');
       }
 
+      console.log('Save bill - items being sent:', items);
       const response = await fetch(`/api/bills/${billId}`, {
         method: 'PUT',
         headers: {
@@ -206,44 +231,46 @@ export default function ViewBillPage() {
     }
   };
 
-  const autoSaveBill = async (title: string, generatedBillSet: BillSet) => {
-    try {
-      const response = await fetch(`/api/bills/${billId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          items,
-          billSet: generatedBillSet
-        }),
-      });
-
-      if (response.ok) {
-        setSuccessMessage('✅ बिल अपडेट हो गया!');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (err) {
-      console.error('Auto-save failed:', err);
-    }
-  };
-
   // Auto-save when title changes (debounced)
   useEffect(() => {
     if (isEditing && billTitle && billData) {
       const timeoutId = setTimeout(() => {
         if (billSet) {
           autoSaveBill(billTitle, billSet);
+        } else if (items.length > 0) {
+          // If no billSet but items exist, generate distributions first
+          generateBills();
         }
       }, 2000); // Auto-save after 2 seconds of inactivity
       
       return () => clearTimeout(timeoutId);
     }
-  }, [billTitle, isEditing, billData, billSet]);
+  }, [billTitle, isEditing, billData, billSet, autoSaveBill, items, generateBills]);
+
+  // Auto-save when items change (debounced)
+  useEffect(() => {
+    if (isEditing && items.length > 0) {
+      const timeoutId = setTimeout(() => {
+        if (billSet) {
+          autoSaveBill(billTitle, billSet);
+        } else {
+          // If no billSet but items exist, generate distributions first
+          generateBills();
+        }
+      }, 3000); // Auto-save after 3 seconds of inactivity
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [items, isEditing, billTitle, billSet, autoSaveBill, generateBills]);
 
   const downloadExcel = () => {
     if (!billData) return;
+
+    // Check if distributions exist
+    if (!billData.distributions || billData.distributions.length === 0) {
+      toast.error('बिल में वितरण डेटा नहीं है। कृपया पहले बिल जेनरेट करें।');
+      return;
+    }
 
     const wb = XLSX.utils.book_new();
     const excelData = [];
@@ -252,12 +279,16 @@ export default function ViewBillPage() {
     excelData.push(['', '', '', '', '', '60%', '', '30%', '', '10%', '']);
     excelData.push(['क्र सं', 'सामग्री', 'दर रू', 'मात्रा', 'कुल राशि', 'मात्रा', 'Amount', 'मात्रा', 'Amount', 'मात्रा', 'Amount']);
 
-    // Use the same itemGroups logic as the table display
-    const groups = Object.values(itemGroups);
+    // Use the EXACT SAME data as the UI - Use itemGroups directly
+    // This ensures we get the exact same data that's displayed in the UI
+    const groupsArray = Object.values(itemGroups);
+    
+    console.log('Excel Export - Using itemGroups (same as UI):', itemGroups);
+    console.log('Excel Export - groupsArray:', groupsArray);
 
-    // Data rows
+    // Data rows - Use the exact same logic as the UI display
     let rowIndex = 1;
-    groups.forEach((group) => {
+    groupsArray.forEach((group) => {
       const { item, distributions } = group;
       const dist60 = distributions.find((d) => d.percentage === 60) || { quantity: 0, amount: 0 };
       const dist30 = distributions.find((d) => d.percentage === 30) || { quantity: 0, amount: 0 };
@@ -269,19 +300,19 @@ export default function ViewBillPage() {
         item.rate,
         item.quantity,
         item.quantity * item.rate,
-        parseFloat(dist60.quantity.toFixed(2)),
+        parseFloat(dist60.quantity.toFixed(item.allows_decimal ? 2 : 0)),
         parseFloat(dist60.amount.toFixed(2)),
-        parseFloat(dist30.quantity.toFixed(2)),
+        parseFloat(dist30.quantity.toFixed(item.allows_decimal ? 2 : 0)),
         parseFloat(dist30.amount.toFixed(2)),
-        parseFloat(dist10.quantity.toFixed(2)),
+        parseFloat(dist10.quantity.toFixed(item.allows_decimal ? 2 : 0)),
         parseFloat(dist10.amount.toFixed(2))
       ]);
     });
 
-    // Total row
-    const total60 = billData?.distributions?.filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0) || 0;
-    const total30 = billData?.distributions?.filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0) || 0;
-    const total10 = billData?.distributions?.filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0) || 0;
+    // Total row - Use the EXACT SAME calculation as the UI
+    const total60 = (billData.distributions || []).filter(d => d.percentage === 60).reduce((sum, d) => sum + d.amount, 0);
+    const total30 = (billData.distributions || []).filter(d => d.percentage === 30).reduce((sum, d) => sum + d.amount, 0);
+    const total10 = (billData.distributions || []).filter(d => d.percentage === 10).reduce((sum, d) => sum + d.amount, 0);
 
     excelData.push([
       '', '', '', 'सामग्री की कुल राशि',
@@ -338,8 +369,10 @@ export default function ViewBillPage() {
         };
       });
     }
+    console.log('UI Display - Using billData:', billData);
+    console.log('UI Display - groups:', groups);
     return groups;
-  }, [billData?.items, billData?.distributions]);
+  }, [billData]);
 
   if (isLoading) {
     return (

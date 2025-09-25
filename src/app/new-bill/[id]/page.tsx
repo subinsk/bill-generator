@@ -53,7 +53,23 @@ export default function NewBillPage({ params }: NewBillPageProps) {
             // API returns { success: true, bill: { bill, items, distributions } }
             const billData = data.bill;
             setBillTitle(billData.bill?.title || '');
-            setItems(billData.items || []);
+            
+            // Convert database items to frontend format
+            const editableItems: Item[] = (billData.items || []).map((item: {
+              id: number;
+              bill_id: number;
+              name: string;
+              rate: number;
+              quantity: number;
+              allows_decimal: boolean;
+            }, index: number) => ({
+              id: `item-${index}`,
+              name: item.name,
+              rate: item.rate,
+              quantity: item.quantity,
+              allowsDecimal: item.allows_decimal
+            }));
+            setItems(editableItems);
           }
         } else {
           console.log('No existing draft found for ID, using default.');

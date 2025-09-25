@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Eye, Trash2, Calculator, RefreshCw, AlertTriangle } fr
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
-import { SavedBill } from '@/lib/database';
+import { SavedBill } from '@/lib/database-prisma';
 import { cn } from '@/lib/utils';
 
 export default function DistributionBillsPage() {

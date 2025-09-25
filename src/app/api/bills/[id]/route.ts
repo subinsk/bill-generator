@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBillByUUID, updateBillByUUID, updateBillWithDistributions, deleteBillByUUID } from '@/lib/database';
+import { getBillByUUID, updateBillByUUID, updateBillWithDistributions, deleteBillByUUID } from '@/lib/database-prisma';
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const bill = getBillByUUID(id);
+    const bill = await getBillByUUID(id);
     
     if (!bill) {
       return NextResponse.json(
@@ -73,7 +73,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    const deleted = deleteBillByUUID(id);
+    const deleted = await deleteBillByUUID(id);
     
     if (!deleted) {
       return NextResponse.json(

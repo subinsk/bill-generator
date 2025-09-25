@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createGSTBillDraft } from '@/lib/database';
+import { createGSTBillDraft } from '@/lib/database-prisma';
 
 export async function POST() {
   try {
-    const { uuid, id } = createGSTBillDraft();
+    const { uuid, id } = await createGSTBillDraft();
     
     return NextResponse.json(
       { 

@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Eye, Trash2, FileText, RefreshCw, AlertTriangle } from
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
-import { SavedGSTBill } from '@/lib/database';
+import { SavedGSTBill } from '@/lib/database-prisma';
 import { cn } from '@/lib/utils';
 
 export default function GSTBillsPage() {

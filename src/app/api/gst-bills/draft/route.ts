@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveGSTBill, getDatabase } from '@/lib/database';
+import { createGSTBillDraft, updateGSTBillByUUID } from '@/lib/database-prisma';
 import { GSTBill } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const gstBill: GSTBill & { isDraft: boolean } = await request.json();
     
-    const billId = saveGSTBill(gstBill);
+    const { uuid, id } = await createGSTBillDraft();
+    
+    // Update with GST bill data if provided
+    if (gstBill) {
+      await updateGSTBillByUUID(uuid, gstBill, gstBill.isDraft);
+    }
     
     return NextResponse.json(
       { 
         success: true, 
-        id: billId,
+        id: id,
+        uuid: uuid,
         message: 'GST बिल ड्राफ्ट सेव हो गया'
       },
       { status: 201 }
@@ -27,36 +33,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const gstBill: GSTBill & { isDraft: boolean; id: number } = await request.json();
+    const gstBill: GSTBill & { isDraft: boolean; uuid: string } = await request.json();
     
-    const db = getDatabase();
+    const updated = await updateGSTBillByUUID(gstBill.uuid, gstBill, gstBill.isDraft);
     
-    // Update existing draft
-    const updateBill = db.prepare(`
-      UPDATE gst_bills 
-      SET bill_data = ?, 
-          company_name = ?, 
-          invoice_no = ?, 
-          invoice_date = ?, 
-          billed_to_name = ?, 
-          grand_total = ?, 
-          final_amount = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    
-    const result = updateBill.run(
-      JSON.stringify(gstBill),
-      gstBill.billDetails.companyName,
-      gstBill.billDetails.invoiceNo,
-      gstBill.billDetails.invoiceDate,
-      gstBill.billDetails.billedToName,
-      gstBill.grandTotal,
-      gstBill.finalAmount,
-      gstBill.id
-    );
-    
-    if (result.changes === 0) {
+    if (!updated) {
       return NextResponse.json(
         { error: 'ड्राफ्ट अपडेट नहीं हो सका' },
         { status: 404 }
@@ -66,7 +47,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       { 
         success: true, 
-        id: gstBill.id,
+        uuid: gstBill.uuid,
         message: 'GST बिल ड्राफ्ट अपडेट हो गया'
       },
       { status: 200 }

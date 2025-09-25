@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { getAllBills, getAllGSTBills } from '@/lib/database';
+import { getAllBills, getAllGSTBills } from '@/lib/database-prisma';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';

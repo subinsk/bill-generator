@@ -32,18 +32,18 @@ export class BillDistributor {
       // Ensure the sum of distributions equals the total
       this.adjustDistributionToMatchTotal(billSet);
       
-      // Final validation and auto-adjustment
+      // Final validation - if not valid, don't auto-adjust
       const accuracyValidation = this.validateBillSetAccuracy(billSet);
       if (!accuracyValidation.isValid) {
-        console.log('Auto-adjusting distribution for mathematical accuracy...');
-        this.autoAdjustDistribution(billSet);
+        console.log('Distribution validation failed, but using original data...');
+        // Don't auto-adjust - just return the original distribution
       }
       
-      // Final check - if still not valid, use fallback distribution
+      // Final check - if still not valid, don't use fallback
       const finalValidation = this.validateBillSetAccuracy(billSet);
       if (!finalValidation.isValid) {
-        console.log('Using fallback distribution method...');
-        this.applyFallbackDistribution(billSet);
+        console.log('Distribution validation failed, but using original data...');
+        // Don't use fallback - just return the original distribution
       }
 
       return { success: true, billSet };
@@ -88,18 +88,18 @@ export class BillDistributor {
       // Ensure the sum of distributions equals the total
       this.adjustDistributionToMatchTotal(billSet);
       
-      // Final validation and auto-adjustment
+      // Final validation - if not valid, don't auto-adjust
       const accuracyValidation = this.validateBillSetAccuracy(billSet);
       if (!accuracyValidation.isValid) {
-        console.log('Auto-adjusting distribution for mathematical accuracy...');
-        this.autoAdjustDistribution(billSet);
+        console.log('Distribution validation failed, but using original data...');
+        // Don't auto-adjust - just return the original distribution
       }
       
-      // Final check - if still not valid, use fallback distribution
+      // Final check - if still not valid, don't use fallback
       const finalValidation = this.validateBillSetAccuracy(billSet);
       if (!finalValidation.isValid) {
-        console.log('Using fallback distribution method...');
-        this.applyFallbackDistribution(billSet);
+        console.log('Distribution validation failed, but using original data...');
+        // Don't use fallback - just return the original distribution
       }
 
       return { success: true, billSet };

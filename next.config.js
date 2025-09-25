@@ -3,9 +3,6 @@ const nextConfig = {
   // Enable static exports for Vercel deployment
   output: 'standalone',
   
-  // Ensure SQLite works in serverless environment
-  serverExternalPackages: ['better-sqlite3'],
-  
   // Environment variables
   env: {
     DISTRIBUTION_METHOD: process.env.DISTRIBUTION_METHOD || 'even',
@@ -66,14 +63,6 @@ const nextConfig = {
         ],
       },
     ];
-  },
-  
-  // Webpack configuration for SQLite
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('better-sqlite3');
-    }
-    return config;
   }
 };
 

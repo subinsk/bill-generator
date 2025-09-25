@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createBillDraft } from '@/lib/database';
+import { createBillDraft } from '@/lib/database-prisma';
 
 export async function POST() {
   try {
-    const { uuid, id } = createBillDraft();
+    const { uuid, id } = await createBillDraft();
     
     return NextResponse.json(
       { 

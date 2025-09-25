@@ -1,37 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/database';
+import { createBillDraft, updateBillByUUID } from '@/lib/database-prisma';
 import { Item } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const { title, items, isDraft }: { title: string; items: Item[]; isDraft: boolean } = await request.json();
     
-    const db = getDatabase();
+    const { uuid, id } = await createBillDraft(title);
     
-    // Insert draft bill
-    const insertBill = db.prepare(`
-      INSERT INTO bills (title, total_amount)
-      VALUES (?, ?)
-    `);
-    
-    const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-    const result = insertBill.run(title, totalAmount);
-    const billId = result.lastInsertRowid as number;
-    
-    // Insert items
-    const insertItem = db.prepare(`
-      INSERT INTO bill_items (bill_id, name, rate, quantity, allows_decimal)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    
-    for (const item of items) {
-      insertItem.run(billId, item.name, item.rate, item.quantity, item.allowsDecimal ? 1 : 0);
+    // Update with items if provided
+    if (items && items.length > 0) {
+      await updateBillByUUID(uuid, title, items, isDraft);
     }
     
     return NextResponse.json(
       { 
         success: true, 
-        id: billId,
+        id: id,
+        uuid: uuid,
         message: 'बिल ड्राफ्ट सेव हो गया'
       },
       { status: 201 }
@@ -47,47 +33,21 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, title, items, isDraft }: { id: number; title: string; items: Item[]; isDraft: boolean } = await request.json();
+    const { uuid, title, items, isDraft }: { uuid: string; title: string; items: Item[]; isDraft: boolean } = await request.json();
     
-    const db = getDatabase();
+    const updated = await updateBillByUUID(uuid, title, items, isDraft);
     
-    // Update existing draft
-    const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-    
-    const updateBill = db.prepare(`
-      UPDATE bills 
-      SET title = ?, 
-          total_amount = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    
-    const result = updateBill.run(title, totalAmount, id);
-    
-    if (result.changes === 0) {
+    if (!updated) {
       return NextResponse.json(
         { error: 'ड्राफ्ट अपडेट नहीं हो सका' },
         { status: 404 }
       );
     }
     
-    // Delete existing items and insert new ones
-    const deleteItems = db.prepare('DELETE FROM bill_items WHERE bill_id = ?');
-    deleteItems.run(id);
-    
-    const insertItem = db.prepare(`
-      INSERT INTO bill_items (bill_id, name, rate, quantity, allows_decimal)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    
-    for (const item of items) {
-      insertItem.run(id, item.name, item.rate, item.quantity, item.allowsDecimal ? 1 : 0);
-    }
-    
     return NextResponse.json(
       { 
         success: true, 
-        id: id,
+        uuid: uuid,
         message: 'बिल ड्राफ्ट अपडेट हो गया'
       },
       { status: 200 }

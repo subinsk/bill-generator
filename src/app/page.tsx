@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { Calculator, Plus, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { LogoutButton } from '@/components/LogoutButton';
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -14,7 +15,10 @@ function HomeContent() {
         <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mx-auto max-w-5xl">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mx-auto max-w-5xl relative">
+            <div className="absolute top-4 right-4">
+              <LogoutButton />
+            </div>
             <div className="flex items-center justify-center gap-4 mb-4">
               <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-lg">
                 <Calculator className="text-white" size={28} />

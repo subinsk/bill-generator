@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveBill, getAllBills } from '@/lib/database';
+import { saveBill, getAllBills } from '@/lib/database-prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (isAutoSave) {
       try {
         // Try to find existing bill with same title (simple approach for now)
-        const existingBills = getAllBills();
+        const existingBills = await getAllBills();
         const existingBill = existingBills.find(bill => bill.title === title.trim());
         
         if (existingBill) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save bill to database
-    const billId = saveBill(title.trim(), items, billSet);
+    const billId = await saveBill(title.trim(), items, billSet);
 
     return NextResponse.json({
       success: true,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const bills = getAllBills();
+    const bills = await getAllBills();
     return NextResponse.json({
       success: true,
       bills
