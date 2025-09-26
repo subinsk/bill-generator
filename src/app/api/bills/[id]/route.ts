@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillByUUID, updateBillByUUID, updateBillWithDistributions, deleteBillByUUID } from '@/lib/database-prisma';
+import { BillDistributor } from '@/lib/distribution';
+import { APP_CONFIG } from '@/lib/config';
 
 export async function GET(
   request: NextRequest,
@@ -40,9 +42,32 @@ export async function PUT(
     const body = await request.json();
     const { title, items, billSet, isDraft } = body;
 
-    // Use updateBillWithDistributions if billSet is provided, otherwise use regular update
-    const updated = billSet 
-      ? await updateBillWithDistributions(id, title, items, billSet, isDraft)
+    // CRITICAL: Always re-generate distribution with updated logic
+    let updatedBillSet = billSet;
+    
+    if (items && items.length > 0) {
+      console.log('Re-generating distribution with updated logic...');
+      
+      // Re-generate distribution using the updated logic
+      const distributionResult = BillDistributor.distributeItems(items);
+      
+      if (distributionResult.success) {
+        updatedBillSet = distributionResult.billSet;
+        console.log('Distribution re-generated successfully');
+        
+        // No validation or adjustment - only use correct distribution
+      } else {
+        console.error('Failed to re-generate distribution:', distributionResult.error);
+        return NextResponse.json(
+          { error: `Distribution error: ${distributionResult.error}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Use updateBillWithDistributions with the re-generated billSet
+    const updated = updatedBillSet 
+      ? await updateBillWithDistributions(id, title, items, updatedBillSet, isDraft)
       : await updateBillByUUID(id, title, items, isDraft);
     
     if (!updated) {
@@ -54,7 +79,8 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: 'बिल सफलतापूर्वक अपडेट हो गया'
+      message: 'बिल सफलतापूर्वक अपडेट हो गया',
+      billSet: updatedBillSet // Return the updated distribution
     });
 
   } catch (error) {

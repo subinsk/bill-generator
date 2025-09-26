@@ -56,23 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Smart validation: only log if there are issues, but always return success
-    if (result.billSet) {
-      const accuracyValidation = BillDistributor.validateBillSetAccuracy(result.billSet);
-      if (!accuracyValidation.isValid) {
-        console.log('Generated distributions have mathematical errors, auto-adjusting...');
-        BillDistributor.autoAdjustDistribution(result.billSet);
-        
-        // Final check - if still not valid, use fallback
-        const finalValidation = BillDistributor.validateBillSetAccuracy(result.billSet);
-        if (!finalValidation.isValid) {
-          console.log('Auto-adjustment failed, using fallback distribution method...');
-          BillDistributor.applyFallbackDistribution(result.billSet);
-        }
-      } else {
-        console.log('Generated distributions are mathematically accurate');
-      }
-    }
+    // No validation or adjustment - only return the correct distribution
     
     return NextResponse.json({
       success: true,

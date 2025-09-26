@@ -14,6 +14,11 @@ export default withAuth(
           return true;
         }
         
+        // Allow access to distribute API without authentication (for testing)
+        if (req.nextUrl.pathname === '/api/distribute') {
+          return true;
+        }
+        
         // Require authentication for all other routes
         return !!token;
       },

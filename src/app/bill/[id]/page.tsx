@@ -87,6 +87,29 @@ export default function ViewBillPage() {
       }));
       setItems(editableItems);
       
+      // CRITICAL: Re-generate distribution with updated logic
+      if (editableItems.length > 0) {
+        console.log('Re-generating distribution with updated logic...');
+        const distributionResponse = await fetch('/api/distribute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items: editableItems,
+            method: APP_CONFIG.DISTRIBUTION_METHOD,
+          }),
+        });
+
+        const distributionData = await distributionResponse.json();
+        if (distributionResponse.ok && distributionData.billSet) {
+          setBillSet(distributionData.billSet);
+          console.log('Distribution re-generated successfully');
+        } else {
+          console.error('Failed to re-generate distribution:', distributionData.error);
+        }
+      }
+      
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'अज्ञात त्रुटि');
     } finally {
@@ -220,6 +243,12 @@ export default function ViewBillPage() {
         throw new Error(data.error || 'बिल सेव करने में त्रुटि');
       }
 
+      // Update the billSet with the re-generated distribution from the server
+      if (data.billSet) {
+        setBillSet(data.billSet);
+        console.log('Updated billSet with re-generated distribution:', data.billSet);
+      }
+
       setSuccessMessage('✅ बिल सफलतापूर्वक सेव हो गया!');
       setIsEditing(false);
       await fetchBillData(); // Refresh data
@@ -241,7 +270,7 @@ export default function ViewBillPage() {
           // If no billSet but items exist, generate distributions first
           generateBills();
         }
-      }, 2000); // Auto-save after 2 seconds of inactivity
+      }, 60000); // Auto-save after 2 seconds of inactivity
       
       return () => clearTimeout(timeoutId);
     }
@@ -257,7 +286,7 @@ export default function ViewBillPage() {
           // If no billSet but items exist, generate distributions first
           generateBills();
         }
-      }, 3000); // Auto-save after 3 seconds of inactivity
+      }, 60000); // Auto-save after 3 seconds of inactivity
       
       return () => clearTimeout(timeoutId);
     }
